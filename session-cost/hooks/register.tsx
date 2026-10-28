@@ -83,8 +83,9 @@ const loadRates = async ($: EngineInterface) => {
     await $.store.set('rates', fresh)
     await update($, rates, () => fresh)
   } catch {
-    // Offline or the service is down: keep yesterday's rates if we have them.
-    await update($, rates, () => cached ?? FALLBACK)
+    // Offline or the service is down: keep the last rates we had, but they're
+    // over a day old now, so mark them approximate.
+    await update($, rates, () => (cached ? { ...cached, isLive: false } : FALLBACK))
   }
 }
 
@@ -175,13 +176,21 @@ export const register: Register = on => {
       </Box>
     )
 
+    // Keep whatever other mods (or the engine) draw here, with the cost row under it.
+    const below = await next(e)
+
     if (e.surface === 'mobile' || !('Select' in elements)) {
-      return summary
+      return (
+        <Box flexDirection="column">
+          {below}
+          {summary}
+        </Box>
+      )
     }
 
     const { Select } = elements
 
-    return (
+    const row = (
       <Box flexDirection="row" alignItems="center" justifyContent="space-between" gap={2}>
         {summary}
         <Select
@@ -193,6 +202,13 @@ export const register: Register = on => {
             if (isCurrency(value)) void setCurrency($, value)
           }}
         />
+      </Box>
+    )
+
+    return (
+      <Box flexDirection="column">
+        {below}
+        {row}
       </Box>
     )
   })
