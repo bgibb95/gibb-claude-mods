@@ -1,0 +1,16 @@
+{
+  "name": "gibb-claude-mods",
+  "owner": {
+    "name": "Brendan Gibb"
+  },
+  "metadata": {
+    "description": "Brendan Gibb's mods for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "session-cost",
+      "source": "./session-cost",
+      "description": "Shows the current session's cost above the prompt, in a currency you pick"
+    }
+  ]
+}

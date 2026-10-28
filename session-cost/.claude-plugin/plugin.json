@@ -1,0 +1,7 @@
+{
+  "name": "session-cost",
+  "version": "0.1.0",
+  "description": "Shows the current session's cost above the prompt, in a currency you pick",
+  "author": { "name": "Brendan Gibb" },
+  "types": "./types/index.d.ts"
+}
