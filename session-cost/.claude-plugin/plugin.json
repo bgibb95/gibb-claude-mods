@@ -1,7 +1,10 @@
 {
   "name": "session-cost",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shows the current session's cost above the prompt, in a currency you pick",
-  "author": { "name": "Brendan Gibb" },
+  "author": {
+    "name": "Brendan Gibb"
+  },
+  "license": "MIT",
   "types": "./types/index.d.ts"
 }

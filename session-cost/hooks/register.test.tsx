@@ -18,8 +18,16 @@ const BAND = {
 const LIVE = { GBP: 0.5, EUR: 0.9, JPY: 150 }
 
 // Stands for the engine beneath the mod.
-const engine = (on: On, options: { usd?: number; fetch?: 'ok' | 'fail' } = {}) => {
+const engine = (
+  on: On,
+  options: { usd?: number; fetch?: 'ok' | 'fail'; beneath?: string } = {},
+) => {
   const fetches: string[] = []
+  // What the engine, or another mod's band, draws above the prompt.
+  on('ui.render', ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    return options.beneath === undefined ? <Box /> : <Text>{options.beneath}</Text>
+  })
   on('command.register', () => ({ value: { command: 'cost-currency' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.measure', (_, e) => ({ changed: e.changed, cwd: '/' }))
@@ -55,7 +63,7 @@ test('the band shows the session cost and switches currency', async ($, on) => {
   engine(on, { usd: 2 })
   await start($, clock)
 
-  for (const surface of ['terminal', 'desktop'] as const) {
+  for (const surface of ['terminal', 'desktop', 'vscode'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
     expect((await ui.find({ type: 'Text', text: /\d/ }))?.text).toBe('$2.00')
 
@@ -114,6 +122,21 @@ test('rates fetched within a day are reused', async ($, on) => {
   await ui.unmount()
 })
 
+test("rates over a day old are marked approximate when they can't be refreshed", async ($, on) => {
+  mock.store(on, {
+    currency: 'GBP',
+    rates: { values: { USD: 1, GBP: 0.8 }, fetchedAt: 0, isLive: true },
+  })
+  const clock = mock.clock(on, { now: 2 * 24 * 60 * 60 * 1000 })
+  engine(on, { usd: 10, fetch: 'fail' })
+  await start($, clock)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: /\d/ }))?.text).toBe('£8.00')
+  expect(await ui.find({ type: 'Text', text: /approx/ })).toBeDefined()
+  await ui.unmount()
+})
+
 test('without live rates the built-in ones are marked approximate', async ($, on) => {
   mock.store(on, { currency: 'GBP' })
   const clock = mock.clock(on)
@@ -140,14 +163,24 @@ test('mobile shows the cost without a picker', async ($, on) => {
 test('nothing is drawn before the first cost reading', async ($, on) => {
   mock.store(on)
   const clock = mock.clock(on)
-  engine(on)
-  on('ui.render', ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text>engine</Text>
-  })
+  engine(on, { beneath: 'another band' })
   await start($, clock)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect((await ui.find({ type: 'Text' }))?.text).toBe('engine')
+  expect((await ui.find({ type: 'Text' }))?.text).toBe('another band')
   await ui.unmount()
+})
+
+test("another mod's band stays, with the cost under it", async ($, on) => {
+  mock.store(on)
+  const clock = mock.clock(on)
+  engine(on, { usd: 1, beneath: 'another band' })
+  await start($, clock)
+
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    expect((await ui.find({ type: 'Text', text: /another band/ }))?.text).toBe('another band')
+    expect((await ui.find({ type: 'Text', text: /\d/ }))?.text).toBe('$1.00')
+    await ui.unmount()
+  }
 })
